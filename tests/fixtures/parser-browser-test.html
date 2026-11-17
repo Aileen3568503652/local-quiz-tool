@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>导入解析器浏览器测试</title>
+<h1>导入解析器浏览器测试</h1>
+<p>选择本目录内的 DOCX、MD、TXT 和 PNG 样例；可同时选择。测试结果只显示在本页。</p>
+<input id="files" type="file" multiple><button id="run">运行测试</button><pre id="result">等待选择样例</pre>
+<script src="../../src/parser.js"></script><script>
+document.querySelector('#run').onclick=async()=>{
+  const out=document.querySelector('#result'); out.textContent='测试中…';
+  try {
+    const files=[...document.querySelector('#files').files], check=(v,m)=>{if(!v)throw new Error(m);};
+    const data=await QuizParser.parseFiles(files,{onProgress:p=>{out.textContent=p.message;}});
+    if(files.some(f=>f.name==='化学练习.docx')){
+      const qs=data.questions.filter(q=>q.source==='化学练习.docx');
+      check(qs.length===3,'DOCX 题数应为 3');
+      check(qs[0].answer==='A' && qs[1].answer==='NaCl' && qs[2].answer==='m=cV','DOCX 答案不匹配');
+      check(qs[2].images.length===1,'DOCX 图片丢失');
+      check(data.warnings.some(s=>s.includes('公式')),'DOCX 公式应提示校对');
+    }
+    if(files.some(f=>f.name==='生态学练习.md')){
+      const qs=data.questions.filter(q=>q.source==='生态学练习.md');
+      check(qs.length===7,'MD 题数应为 7');
+      check(qs[1].answer==='AC','MD 多选答案错误');
+      if(files.some(f=>f.name==='叶片.png')) check(qs[4].images.length===1,'MD 关联图片丢失');
+    }
+    out.textContent='PASS\n题数：'+data.questions.length+'\n知识点分类：'+Object.keys(data.knowledge).length+'\n未匹配答案：'+data.unmatchedAnswers.length+'\n提示：'+data.warnings.join('；');
+  } catch(e) {out.textContent='FAIL: '+e.message;}
+};
+</script></html>
